@@ -1,0 +1,25 @@
+# Core LangChain
+langchain==0.1.16
+langchain-openai==0.1.1
+langchain-community==0.0.34
+
+# Vector Store
+chromadb==0.4.24
+
+# PDF Processing
+pymupdf==1.24.1
+pypdf==4.1.0
+
+# Data Models
+pydantic==2.6.4
+pydantic-settings==2.2.1
+
+# Web Framework
+streamlit==1.32.2
+
+# Utilities
+python-dotenv==1.0.1
+tiktoken==0.6.0
+
+# Optional but recommended
+watchdog==4.0.0  # For file watching

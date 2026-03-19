@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  pdf-qa-system:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
+      - TEMPERATURE=${TEMPERATURE:-0.0}
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma_db
+      - COLLECTION_NAME=${COLLECTION_NAME:-pdf_documents}
+    volumes:
+      # Persist ChromaDB data
+      - chroma-data:/app/data/chroma_db
+      # Optional: mount local src for development
+      # - ./src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  chroma-data:
+    driver: local
