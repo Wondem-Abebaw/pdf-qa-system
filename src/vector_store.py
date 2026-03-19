@@ -11,45 +11,68 @@ from langchain.schema import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 
-from src.config import settings
-
 
 class VectorStoreManager:
     """Manages ChromaDB vector store operations."""
     
-    def __init__(self, persist_directory: Optional[Path] = None, collection_name: Optional[str] = None):
+    # Class-level client to avoid multiple instances
+    _client = None
+    _persist_directory = None
+    
+    def __init__(self, persist_directory: Optional[Path] = None, collection_name: Optional[str] = None, api_key: Optional[str] = None):
         """
         Initialize vector store manager.
         
         Args:
             persist_directory: Path to ChromaDB persistence directory
             collection_name: Name of the ChromaDB collection
+            api_key: OpenAI API key
         """
-        self.persist_directory = persist_directory or settings.chroma_path
-        self.collection_name = collection_name or settings.collection_name
+        self.persist_directory = persist_directory or Path("./data/chroma_db")
+        self.collection_name = collection_name or "pdf_documents"
         
         # Ensure directory exists
         self.persist_directory.mkdir(parents=True, exist_ok=True)
         
         # Initialize embeddings
         self.embeddings = OpenAIEmbeddings(
-            model=settings.embedding_model,
-            openai_api_key=settings.openai_api_key
+            model="text-embedding-3-small",
+            openai_api_key=api_key
         )
         
         # Initialize or load vector store
         self.vectorstore = None
         self._initialize_vectorstore()
     
-    def _initialize_vectorstore(self):
-        """Initialize or load existing ChromaDB vector store."""
-        try:
-            # Check if collection already exists
-            client = chromadb.PersistentClient(
+    def _get_or_create_client(self):
+        """Get existing client or create new one if needed."""
+        # Only create new client if directory changed or client doesn't exist
+        if (VectorStoreManager._client is None or 
+            VectorStoreManager._persist_directory != str(self.persist_directory)):
+            
+            # Clear old client if it exists
+            if VectorStoreManager._client is not None:
+                try:
+                    VectorStoreManager._client = None
+                except:
+                    pass
+            
+            # Create new client
+            VectorStoreManager._client = chromadb.PersistentClient(
                 path=str(self.persist_directory),
                 settings=ChromaSettings(anonymized_telemetry=False)
             )
+            VectorStoreManager._persist_directory = str(self.persist_directory)
+        
+        return VectorStoreManager._client
+    
+    def _initialize_vectorstore(self):
+        """Initialize or load existing ChromaDB vector store."""
+        try:
+            # Get or create client
+            client = self._get_or_create_client()
             
+            # Check if collection exists
             existing_collections = [col.name for col in client.list_collections()]
             
             if self.collection_name in existing_collections:
@@ -57,7 +80,8 @@ class VectorStoreManager:
                 self.vectorstore = Chroma(
                     collection_name=self.collection_name,
                     embedding_function=self.embeddings,
-                    persist_directory=str(self.persist_directory)
+                    persist_directory=str(self.persist_directory),
+                    client=client
                 )
                 print(f"✓ Loaded existing collection '{self.collection_name}'")
             else:
@@ -65,7 +89,8 @@ class VectorStoreManager:
                 self.vectorstore = Chroma(
                     collection_name=self.collection_name,
                     embedding_function=self.embeddings,
-                    persist_directory=str(self.persist_directory)
+                    persist_directory=str(self.persist_directory),
+                    client=client
                 )
                 print(f"✓ Created new collection '{self.collection_name}'")
                 
@@ -88,9 +113,6 @@ class VectorStoreManager:
         try:
             # Add documents and get IDs
             ids = self.vectorstore.add_documents(documents)
-            
-            # ChromaDB automatically persists, but we can explicitly persist
-            # Note: Chroma.from_documents handles persistence automatically
             
             print(f"✓ Added {len(documents)} document chunks to vector store")
             return ids

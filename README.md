@@ -291,6 +291,4 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ for AI Engineers**
 
-Perfect for portfolios, interviews, and learning production RAG systems!

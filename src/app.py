@@ -55,9 +55,10 @@ st.markdown("""
 @st.cache_resource
 def initialize_system():
     """Initialize the document processing system (cached)."""
-    processor = PDFProcessor()
-    vector_store = VectorStoreManager()
-    qa_chain = QAChain(vector_store)
+      # Create three objects that will do the work
+    processor = PDFProcessor() # Reads PDFs
+    vector_store = VectorStoreManager()  # Stores chunks
+    qa_chain = QAChain(vector_store)  # Answers questions
     return processor, vector_store, qa_chain
 
 
